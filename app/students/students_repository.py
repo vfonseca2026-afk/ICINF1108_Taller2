@@ -1,28 +1,52 @@
-from app.shared.in_memory_store import InMemoryStore
-from app.students.students_schemas import Student
-
+from sqlalchemy.orm import Session
+from app.students.students_model import StudentModel
+from app.students.students_schemas import StudentCreate, StudentUpdate
 
 class StudentsRepository:
-    def __init__(self) -> None:
-        self._store: InMemoryStore[Student] = InMemoryStore()
+    def __init__(self, db: Session):
+        
+        self.db = db
 
-    def find_all(self) -> list[Student]:
-        return self._store.find_all()
+    def get_all(self):
+        
+        return self.db.query(StudentModel).all()
 
-    def find_by_id(self, student_id: str) -> Student | None:
-        return self._store.get(student_id)
+    def get_by_id(self, student_id: str):
+        
+        return self.db.query(StudentModel).filter(StudentModel.id == student_id).first()
 
-    def find_by_email(self, email: str) -> Student | None:
-        matches = self._store.find_by(lambda student: student.email == email)
-        return matches[0] if matches else None
+    def get_by_email(self, email: str):
+       
+        return self.db.query(StudentModel).filter(StudentModel.email == email).first()
 
-    def find_by_username(self, username: str) -> Student | None:
-        matches = self._store.find_by(lambda student: student.username == username)
-        return matches[0] if matches else None
+    def create(self, student_data: StudentCreate):
 
-    def save(self, student: Student) -> Student:
-        self._store.set(student)
+        db_student = StudentModel(**student_data.model_dump())
+        self.db.add(db_student)
+        self.db.commit()
+        self.db.refresh(db_student)
+        return db_student
+
+    def update(self, student_id: str, student_data: StudentUpdate):
+       
+        student = self.get_by_id(student_id)
+        if not student:
+            return None
+        
+        
+        update_data = student_data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(student, key, value)
+            
+        self.db.commit()
+        self.db.refresh(student)
         return student
 
-    def delete(self, student_id: str) -> None:
-        self._store.delete(student_id)
+    def delete(self, student_id: str):
+       
+        student = self.get_by_id(student_id)
+        if student:
+            self.db.delete(student)
+            self.db.commit()
+            return True
+        return False
