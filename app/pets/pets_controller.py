@@ -1,32 +1,39 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.shared.database import get_db
-from app.pets.pets_repository import PetsRepository
-from app.pets.pets_schemas import PetCreate, PetUpdate, PetResponse
+from fastapi import APIRouter, status
 
-router = APIRouter(prefix="/pets", tags=["Pets"])
+from app.pets.pets_schemas import CreatePetDto, Pet, PetList, UpdatePetDto
+from app.pets.pets_service import pets_service
+from app.shared.api_response import ApiResponse
 
-@router.get("/", response_model=list[PetResponse])
-def get_pets(db: Session = Depends(get_db)):
-    repo = PetsRepository(db)
-    return repo.get_all()
+router = APIRouter(
+    prefix="/api/students/{studentId}/pets",
+    tags=["Pets"],
+)
 
-@router.post("/", response_model=PetResponse, status_code=status.HTTP_201_CREATED)
-def create_pet(pet: PetCreate, db: Session = Depends(get_db)):
-    repo = PetsRepository(db)
-    return repo.create(pet)
+@router.get("", response_model=ApiResponse[PetList])
+def find_all(studentId: str):
+    return ApiResponse.ok(
+        data=pets_service.find_all_for_student(studentId), 
+        message="Mascotas obtenidas exitosamente"
+    )
 
-@router.get("/{pet_id}", response_model=PetResponse)
-def get_pet_by_id(pet_id: int, db: Session = Depends(get_db)):
-    repo = PetsRepository(db)
-    pet = repo.get_by_id(pet_id)
-    if not pet:
-        raise HTTPException(status_code=404, detail="Mascota no encontrada")
-    return pet
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=ApiResponse[Pet])
+def create(studentId: str, body: CreatePetDto):
+    return ApiResponse.ok(
+        data=pets_service.create(studentId, body),
+        message="Mascota creada exitosamente",
+        status_code=status.HTTP_201_CREATED
+    )
 
-@router.delete("/{pet_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_pet(pet_id: int, db: Session = Depends(get_db)):
-    repo = PetsRepository(db)
-    if not repo.delete(pet_id):
-        raise HTTPException(status_code=404, detail="Mascota no encontrada")
-    return None
+@router.patch("/{petId}", response_model=ApiResponse[Pet])
+def update(studentId: str, petId: str, body: UpdatePetDto):
+    return ApiResponse.ok(
+        data=pets_service.update(studentId, petId, body), 
+        message="Mascota actualizada exitosamente"
+    )
+
+@router.delete("/{petId}", response_model=ApiResponse[Pet])
+def delete(studentId: str, petId: str):
+    return ApiResponse.ok(
+        data=pets_service.delete(studentId, petId), 
+        message="Mascota eliminada exitosamente"
+    )
