@@ -1,42 +1,37 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from app.pets.pets_model import PetModel
-from app.pets.pets_schemas import PetCreate, PetUpdate
+
 
 class PetsRepository:
-    def __init__(self, db: Session):
+    """Acceso a datos. No hace commit: la transacción la controla el servicio."""
+
+    def __init__(self, db: Session) -> None:
         self.db = db
 
-    def get_all(self):
-        return self.db.query(PetModel).all()
+    def find_all_by_student(self, student_id: str) -> list[PetModel]:
+        stmt = (
+            select(PetModel)
+            .where(PetModel.studentId == student_id)
+            .order_by(PetModel.createdAt.desc())
+        )
+        return list(self.db.scalars(stmt))
 
-    def get_by_id(self, pet_id: int):
-        return self.db.query(PetModel).filter(PetModel.id == pet_id).first()
+    def find_by_id(self, pet_id: str) -> PetModel | None:
+        return self.db.get(PetModel, pet_id)
 
-    def create(self, pet_data: PetCreate):
-        new_pet = PetModel(**pet_data.model_dump())
-        self.db.add(new_pet)
-        self.db.commit()
-        self.db.refresh(new_pet)
-        return new_pet
+    def find_by_student_and_name(self, student_id: str, name: str) -> PetModel | None:
+        stmt = select(PetModel).where(
+            PetModel.studentId == student_id, PetModel.name == name
+        )
+        return self.db.scalars(stmt).first()
 
-    def update(self, pet_id: int, pet_data: PetUpdate):
-        db_pet = self.get_by_id(pet_id)
-        if not db_pet:
-            return None
-        
-        
-        update_data = pet_data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(db_pet, key, value)
-            
-        self.db.commit()
-        self.db.refresh(db_pet)
-        return db_pet
+    def add(self, pet: PetModel) -> PetModel:
+        self.db.add(pet)
+        self.db.flush()
+        return pet
 
-    def delete(self, pet_id: int):
-        db_pet = self.get_by_id(pet_id)
-        if db_pet:
-            self.db.delete(db_pet)
-            self.db.commit()
-            return True
-        return False
+    def delete(self, pet: PetModel) -> None:
+        self.db.delete(pet)
+        self.db.flush()
