@@ -30,5 +30,5 @@ Este proyecto corresponde al Taller II de Desarrollo Backend, el cual consiste e
 ### 1. Clonar el Repositorio
 Clona el repositorio oficial en tu máquina local:
 ```bash
-git clone [https://github.com/](https://github.com/)<tu-usuario>/<tu-repositorio>.git
-cd <tu-repositorio>
+git clone [https://github.com/vfonseca2026-afk/ICINF1108_Taller2.git](https://github.com/vfonseca2026-afk/ICINF1108_Taller2.git)
+cd Taller2
