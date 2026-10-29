@@ -1,60 +1,12 @@
-import importlib
-import os
-import pkgutil
-import sys
 from logging.config import fileConfig
-from pathlib import Path
 
 from alembic import context
-from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
-from sqlalchemy.engine import make_url
 
-ALEMBIC_DIR = Path(__file__).resolve().parent
-ROOT_DIR = ALEMBIC_DIR.parent
-PROJECT_DIR = ROOT_DIR / "ICINF1108-templates2026"
-
-sys.path.insert(0, str(PROJECT_DIR))
-sys.path.insert(0, str(ROOT_DIR))
-
-for env_file in (PROJECT_DIR / ".env", ROOT_DIR / ".env"):
-    if env_file.exists():
-        load_dotenv(env_file)
-
-from app.shared.database import Base # type: ignore
-
-
-def import_all_models() -> None:
-    import app # type: ignore
-
-    for module_info in pkgutil.walk_packages(app.__path__, prefix="app."):
-        if "model" in module_info.name.lower():
-            try:
-                importlib.import_module(module_info.name)
-            except Exception as exc:
-                print(f"[alembic] No se pudo importar {module_info.name}: {exc}")
-
-
-import_all_models()
-
-
-def running_in_docker() -> bool:
-    return os.path.exists("/.dockerenv")
-
-
-def get_database_url() -> str:
-    raw_url = os.getenv("DATABASE_URL")
-    if not raw_url:
-        raise RuntimeError("DATABASE_URL no está definida. Revisa tu archivo .env.")
-
-    url = make_url(raw_url)
-
-    if not running_in_docker() and url.host == "db":
-        host_port = int(os.getenv("POSTGRES_HOST_PORT", url.port or 5432))
-        url = url.set(host="localhost", port=host_port)
-
-    return url.render_as_string(hide_password=False)
-
+# Importar TODOS los modelos para que Alembic los vea en Base.metadata
+from app.pets.pets_model import PetModel  # noqa: F401
+from app.shared.database import Base, get_database_url
+from app.students.students_model import StudentModel  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_database_url().replace("%", "%%"))

@@ -1,65 +1,52 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.shared.database import get_db
-from app.students.students_repository import StudentsRepository
-from app.students.students_schemas import StudentResponse, StudentCreate, StudentUpdate
+from app.students.students_schemas import (
+    CreateStudentDto,
+    Student,
+    StudentList,
+    UpdateStudentDto,
+)
+from app.students.students_service import StudentsService
 
-router = APIRouter(prefix="/students", tags=["Students"])
+router = APIRouter(prefix="/api/students", tags=["Students"])
 
-@router.get("/", response_model=List[StudentResponse])
-def list_students(db: Session = Depends(get_db)):
-    
-    repo = StudentsRepository(db)
-    return repo.get_all()
 
-@router.get("/{student_id}", response_model=StudentResponse)
-def get_student(student_id: str, db: Session = Depends(get_db)):
-    
-    repo = StudentsRepository(db)
-    student = repo.get_by_id(student_id)
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Estudiante con ID {student_id} no encontrado"
-        )
-    return student
+def get_students_service(db: Session = Depends(get_db)) -> StudentsService:
+    return StudentsService(db)
 
-@router.post("/", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
-def create_student(student_in: StudentCreate, db: Session = Depends(get_db)):
-   
-    repo = StudentsRepository(db)
-    
-    existing = repo.get_by_email(student_in.email)
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El correo electrónico ya está registrado."
-        )
-        
-    return repo.create(student_in)
 
-@router.put("/{student_id}", response_model=StudentResponse)
-def update_student(student_id: str, student_in: StudentUpdate, db: Session = Depends(get_db)):
-    
-    repo = StudentsRepository(db)
-    updated_student = repo.update(student_id, student_in)
-    if not updated_student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Estudiante con ID {student_id} no encontrado para actualizar"
-        )
-    return updated_student
+@router.get("")
+def find_all(service: StudentsService = Depends(get_students_service)) -> StudentList:
+    return service.find_all()
 
-@router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_student(student_id: str, db: Session = Depends(get_db)):
 
-    repo = StudentsRepository(db)
-    success = repo.delete(student_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Estudiante con ID {student_id} no encontrado para eliminar"
-        )
-    return None
+@router.get("/{studentId}")
+def find_by_id(
+    studentId: str, service: StudentsService = Depends(get_students_service)
+) -> Student:
+    return service.find_by_id(studentId)
+
+
+@router.post("", status_code=201)
+def create(
+    body: CreateStudentDto, service: StudentsService = Depends(get_students_service)
+) -> Student:
+    return service.create(body)
+
+
+@router.patch("/{studentId}")
+def update(
+    studentId: str,
+    body: UpdateStudentDto,
+    service: StudentsService = Depends(get_students_service),
+) -> Student:
+    return service.update(studentId, body)
+
+
+@router.delete("/{studentId}")
+def delete(
+    studentId: str, service: StudentsService = Depends(get_students_service)
+) -> Student:
+    return service.delete(studentId)

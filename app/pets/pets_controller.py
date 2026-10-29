@@ -1,39 +1,48 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.pets.pets_schemas import CreatePetDto, Pet, PetList, UpdatePetDto
-from app.pets.pets_service import pets_service
-from app.shared.api_response import ApiResponse
+from app.pets.pets_service import PetsService
+from app.shared.database import get_db
 
 router = APIRouter(
     prefix="/api/students/{studentId}/pets",
     tags=["Pets"],
 )
 
-@router.get("", response_model=ApiResponse[PetList])
-def find_all(studentId: str):
-    return ApiResponse.ok(
-        data=pets_service.find_all_for_student(studentId), 
-        message="Mascotas obtenidas exitosamente"
-    )
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=ApiResponse[Pet])
-def create(studentId: str, body: CreatePetDto):
-    return ApiResponse.ok(
-        data=pets_service.create(studentId, body),
-        message="Mascota creada exitosamente",
-        status_code=status.HTTP_201_CREATED
-    )
+def get_pets_service(db: Session = Depends(get_db)) -> PetsService:
+    return PetsService(db)
 
-@router.patch("/{petId}", response_model=ApiResponse[Pet])
-def update(studentId: str, petId: str, body: UpdatePetDto):
-    return ApiResponse.ok(
-        data=pets_service.update(studentId, petId, body), 
-        message="Mascota actualizada exitosamente"
-    )
 
-@router.delete("/{petId}", response_model=ApiResponse[Pet])
-def delete(studentId: str, petId: str):
-    return ApiResponse.ok(
-        data=pets_service.delete(studentId, petId), 
-        message="Mascota eliminada exitosamente"
-    )
+@router.get("")
+def find_all(
+    studentId: str, service: PetsService = Depends(get_pets_service)
+) -> PetList:
+    return service.find_all_for_student(studentId)
+
+
+@router.post("", status_code=201)
+def create(
+    studentId: str,
+    body: CreatePetDto,
+    service: PetsService = Depends(get_pets_service),
+) -> Pet:
+    return service.create(studentId, body)
+
+
+@router.patch("/{petId}")
+def update(
+    studentId: str,
+    petId: str,
+    body: UpdatePetDto,
+    service: PetsService = Depends(get_pets_service),
+) -> Pet:
+    return service.update(studentId, petId, body)
+
+
+@router.delete("/{petId}")
+def delete(
+    studentId: str, petId: str, service: PetsService = Depends(get_pets_service)
+) -> Pet:
+    return service.delete(studentId, petId)

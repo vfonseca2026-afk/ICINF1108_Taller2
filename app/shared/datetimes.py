@@ -9,6 +9,9 @@ def utc_now() -> datetime:
 
 
 def iso_ms(dt: datetime) -> str:
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(UTC)
+
     return dt.strftime("%Y-%m-%dT%H:%M:%S") + f".{dt.microsecond // 1000:03d}Z"
 
 
